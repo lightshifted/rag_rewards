@@ -2,7 +2,7 @@
 from unsloth import FastLanguageModel, PatchFastRL
 from unsloth import is_bfloat16_supported
 from trl import GRPOConfig, GRPOTrainer
-from rewards import list_format_reward_func, reasoning_content_reward_func, code_match_reward_func, code_topk_reward_func
+from rewards import *
 from data_prep import get_medical_procedures
 
 # Use PatchFastRL to patch GRPO and other RL algorithms
@@ -66,7 +66,9 @@ if __name__ == "__main__":
             reasoning_content_reward_func,
             list_format_reward_func,
             code_match_reward_func,
+            code_prefix_match_reward_func,
             code_topk_reward_func,
+            code_topk_prefix_reward_func,
         ],
         args = training_args,
         train_dataset = dataset

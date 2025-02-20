@@ -54,26 +54,56 @@ def extract_xml_answer(text: str) -> str:
 
 def code_match_reward_func(
     completions: List[List[Dict[str, str]]], 
-    gt_codes: List[str]
-    # **kwargs
+    icd_cm_target: List[str],
+    **kwargs
     ) -> List[float]:
     matches: List[str] = [extract_xml_answer(completions[i][0]['content']) for i in range(len(completions))]
-    gt_labels = [gt_codes[0].split(";")]
+    gt_labels = [icd_cm_target[0].split(";")]
     search_results: List[List[Dict[str, str]]] = RAG.search(matches)
     pred_codes: List[str] = [[row['document_id'] for row in code_group] for code_group in search_results]
     results = [1.0 if gt in pred else 0.0 for gt, pred in zip(gt_labels, pred_codes)]
     return results
 
-# Check position of code (+1.0 for first position, decreasing rewards for subsequent positions
-def code_topk_reward_func(
+def code_prefix_match_reward_func(
     completions: List[List[Dict[str, str]]], 
-    gt_codes: List[str]
-    # **kwargs
+    icd_cm_target: List[str],
+    **kwargs
     ) -> List[float]:
     matches: List[str] = [extract_xml_answer(completions[i][0]['content']) for i in range(len(completions))]
-    gt_labels = [gt_codes[0].split(";")]
+    gt_labels = [icd_cm_target[0].split(";")]
     search_results: List[List[Dict[str, str]]] = RAG.search(matches)
     pred_codes: List[str] = [[row['document_id'] for row in code_group] for code_group in search_results]
-    results = [1/(pred.index(gt) + 1) if gt in pred else 0.0 
+    results = [1.0 if any(gt[:3] == pred[:3] for pred in preds) else 0.0 
+              for gt, preds in zip(gt_labels, pred_codes)]
+    return results
+
+def code_topk_reward_func(
+    completions: List[List[Dict[str, str]]], 
+    icd_cm_target: List[str],
+    **kwargs
+    ) -> List[float]:
+    matches: List[str] = [extract_xml_answer(completions[i][0]['content']) for i in range(len(completions))]
+    gt_labels = [icd_cm_target[0].split(";")]
+    search_results: List[List[Dict[str, str]]] = RAG.search(matches)
+    pred_codes: List[str] = [[row['document_id'] for row in code_group] for code_group in search_results]
+    results = [1/(pred.index(gt) + 1) if gt in pred else 0.0
               for gt, pred in zip(gt_labels, pred_codes)]
+    return results
+
+def code_topk_prefix_reward_func(
+    completions: List[List[Dict[str, str]]],
+    icd_cm_target: List[str],
+    **kwargs
+    ) -> List[float]:
+    matches: List[str] = [extract_xml_answer(completions[i][0]['content']) for i in range(len(completions))]
+    gt_labels = [icd_cm_target[0].split(";")]
+    search_results: List[List[Dict[str, str]]] = RAG.search(matches)
+    pred_codes: List[str] = [[row['document_id'] for row in code_group] for code_group in search_results]
+    def get_prefix_match_position(gt, preds):
+        for i, pred in enumerate(preds):
+            if gt[:3] == pred[:3]:
+                return i
+        return -1
+    results = [1/(get_prefix_match_position(gt, preds) + 1) if get_prefix_match_position(gt, preds) != -1 else 0.0 
+               for gt, preds in zip(gt_labels, pred_codes)]
     return results
