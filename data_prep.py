@@ -1,13 +1,6 @@
 # data_prep.py
-from datasets import load_from_disk, Dataset
-import pandas as pd
-import textwrap
+from datasets import load_dataset, Dataset
 
-df = pd.read_csv("data/rl_train_data_02.13.2025.csv")
-dataset = Dataset.from_pandas(df)
-dataset = dataset.train_test_split(test_size=0.075, seed=72)
-
-dataset.save_to_disk("train_data")
 
 SYSTEM_PROMPT = """
 Respond in the following format:
@@ -20,15 +13,17 @@ Respond in the following format:
 """
 
 def get_medical_procedures(split = "train") -> Dataset:
-    data = load_from_disk('train_data')[split] # type: ignore
-    data = data.map(lambda x: { # type: ignore
+    dataset = load_dataset("lightshifted/mimic-icd10-cm",
+            token="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",
+            split="train")
+    data = dataset.map(lambda x: {
         'prompt': [
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': x['train_prompt']}
         ],
-        'answer': x['cpt_mods']
-    }) # type: ignore
-    return data # type: ignore
+        'answer': x['icd_cm_target']
+    })
+    return data 
 
 if __name__ == "__main__":
     dataset = get_medical_procedures()
