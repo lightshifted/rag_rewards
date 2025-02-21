@@ -53,16 +53,23 @@ def extract_xml_answer(text: str) -> str:
     return answer.strip()
 
 def code_match_reward_func(
-    completions: List[List[Dict[str, str]]], 
-    icd_cm_target: List[str],
+    completions: List[List[Dict[str, str]]], # set of completions 
+    icd_cm_target: List[str], # set of ground truth labels
     **kwargs
     ) -> List[float]:
+
     matches: List[str] = [extract_xml_answer(completions[i][0]['content']) for i in range(len(completions))]
-    gt_labels = [icd_cm_target[0].split(";")]
-    search_results: List[List[Dict[str, str]]] = RAG.search(matches)
+    k = len(icd_cm_target[0].split(";")) # set k == the no. of gt labels
+    search_results: List[List[Dict[str, str]]] = RAG.search(matches, k=k)
     pred_codes: List[str] = [[row['document_id'] for row in code_group] for code_group in search_results]
-    results = [1.0 if gt in pred else 0.0 for gt, pred in zip(gt_labels, pred_codes)]
-    return results
+
+    eval_score = []
+    for codes in pred_codes:
+        tally = 0
+        for pred_code in codes:
+            tally += [1.0 if pred_code in icd_cm_target[0].split(";") else 0.0][0]
+        eval_score.append(tally / k)
+    return eval_score
 
 def code_prefix_match_reward_func(
     completions: List[List[Dict[str, str]]], 
