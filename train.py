@@ -67,8 +67,7 @@ if __name__ == "__main__":
             list_format_reward_func,
             code_match_reward_func,
             code_prefix_match_reward_func,
-            code_topk_reward_func,
-            code_topk_prefix_reward_func,
+            recall_reward_func,
         ],
         args = training_args,
         train_dataset = dataset
